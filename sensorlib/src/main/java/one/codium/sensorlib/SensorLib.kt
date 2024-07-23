@@ -32,6 +32,7 @@ class SensorLib(
     private val workers = mutableListOf<SensorWorker>()
 
     private var owner: LifecycleOwner? = null
+    private val sensorStatistic = SensorStatisticImpl()
 
     init {
         lifecycleOwner.lifecycle.addObserver(this)
@@ -93,13 +94,16 @@ class SensorLib(
     }
 
     private fun workOnResult(workerRawResults: List<WorkerRawResult>) {
-        //most probably results will need to send to BE in application scope, that's why here we use GlobalScope
+        // most probably results will need to send to BE in application scope, that's why here I use GlobalScope
+        // instead of viewLifecycleOwner scope
         GlobalScope.launch(Dispatchers.IO) {
             val results = workerRawResults.map {
-                val sensorStatistic = SensorStatisticImpl(it.rawData, it.sensorType.dimension)
                 WorkerResult(
                     it.sensorType.sensorName,
-                    SensorResult(sensorStatistic.getMedian(), sensorStatistic.getAvg())
+                    SensorResult(
+                        sensorStatistic.getMedian(it.rawData, it.sensorType.dimension),
+                        sensorStatistic.getAvg(it.rawData, it.sensorType.dimension)
+                    )
                 )
             }
             ResultPublisher().publishResults(results)

@@ -2,9 +2,9 @@ package one.codium.sensorlib.statistic
 
 import one.codium.sensorlib.repo.data.SensorValue
 
-internal class SensorStatisticImpl(val data: List<SensorValue>, private val dimension: Int) : SensorStatistic {
+internal class SensorStatisticImpl : SensorStatistic {
 
-    override fun getMedian(): FloatArray {
+    override fun getMedian(data: List<SensorValue>, dimension: Int): FloatArray {
         val result = FloatArray(dimension)
         for (i in 0 until dimension) {
             val sortedArray = data.sortedBy { it.values[i] }
@@ -22,7 +22,7 @@ internal class SensorStatisticImpl(val data: List<SensorValue>, private val dime
         return result
     }
 
-    override fun getAvg(): FloatArray {
+    override fun getAvg(data: List<SensorValue>, dimension: Int): FloatArray {
         val result = FloatArray(dimension)
         for (i in 0 until dimension) {
             val averageValue = data.sumOf { it.values[i].toDouble() } / data.size

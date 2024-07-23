@@ -35,6 +35,7 @@ internal class SensorWorkerImpl(
 
     override fun stop() {
         sensorManager.unregisterListener(listener)
+        sensorRepository.stopEvent()
     }
 
     override fun actionStarted() {
