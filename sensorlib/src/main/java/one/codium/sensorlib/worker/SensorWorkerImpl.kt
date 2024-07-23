@@ -4,14 +4,16 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import one.codium.sensorlib.data.SensorType
+import one.codium.sensorlib.repo.SensorRepository
 import one.codium.sensorlib.repo.data.SensorResult
-import one.codium.sensorlib.repo.SensorRepositoryImpl
+import one.codium.sensorlib.repo.data.SensorValue
 
 internal class SensorWorkerImpl(
     private val sensorManager: SensorManager,
     private val sensor: Sensor,
-    val sensorRepository: SensorRepositoryImpl,
-    private val resultCallback: (SensorResult) -> Unit
+    override val sensorType: SensorType,
+    val sensorRepository: SensorRepository,
 ) : SensorWorker {
 
     private val listener: SensorEventListener = object : SensorEventListener {
@@ -39,8 +41,8 @@ internal class SensorWorkerImpl(
         sensorRepository.startEvent(System.currentTimeMillis())
     }
 
-    override fun actionStopped() {
-        resultCallback.invoke(sensorRepository.stopEvent())
+    override fun actionStopped(): List<SensorValue> {
+        return sensorRepository.stopEvent()
     }
 
 }

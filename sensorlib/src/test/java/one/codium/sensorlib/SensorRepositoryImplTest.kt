@@ -1,6 +1,8 @@
 package one.codium.sensorlib
 
 import one.codium.sensorlib.repo.SensorRepositoryImpl
+import one.codium.sensorlib.statistic.SensorStatistic
+import one.codium.sensorlib.statistic.SensorStatisticImpl
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -24,9 +26,12 @@ class SensorRepositoryImplTest {
         repo.startEvent(67)
         repo.addValue(68, floatArrayOf(4.3f, 5.2f))
         val result = repo.stopEvent()
-        assertEquals(4.25f, result.medianResults[0])
-        assertEquals(4f, result.medianResults[1])
-        assertEquals(4.675f, result.averageResults[0])
-        assertEquals(3.625f, result.averageResults[1])
+        val sensorStatistic = SensorStatisticImpl(result, 2)
+        val medianResult = sensorStatistic.getMedian()
+        val avgResult = sensorStatistic.getAvg()
+        assertEquals(4.25f, medianResult[0])
+        assertEquals(4f, medianResult[1])
+        assertEquals(4.675f, avgResult[0])
+        assertEquals(3.625f, avgResult[1])
     }
 }

@@ -7,9 +7,17 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import one.codium.sensorlib.data.SensorType
+import one.codium.sensorlib.publisher.ResultPublisher
+import one.codium.sensorlib.repo.data.SensorResult
+import one.codium.sensorlib.statistic.SensorStatistic
+import one.codium.sensorlib.statistic.SensorStatisticImpl
 import one.codium.sensorlib.worker.SensorWorker
 import one.codium.sensorlib.worker.SensorWorkerFactory
+import one.codium.sensorlib.worker.data.WorkerRawResult
 import one.codium.sensorlib.worker.data.WorkerResult
 
 class SensorLib(
@@ -17,7 +25,6 @@ class SensorLib(
     lifecycleOwner: LifecycleOwner,
     private val view: View,
     private val errorCallback: (String) -> Unit,
-    private val result: (WorkerResult) -> Unit
 ) : DefaultLifecycleObserver {
 
     private var sensorManager: SensorManager
@@ -32,9 +39,7 @@ class SensorLib(
 
         val factory = SensorWorkerFactory(sensorManager)
 
-        val magnetWorker = factory.build(SensorType.MAGNET) {
-            result.invoke(WorkerResult(SensorType.MAGNET.sensorName, it))
-        }
+        val magnetWorker = factory.build(SensorType.MAGNET)
 
         if (magnetWorker != null) {
             workers.add(magnetWorker)
@@ -43,15 +48,11 @@ class SensorLib(
             errorCallback.invoke("Magnet sensor not found")
         }
 
-        factory.build(SensorType.AXEL) {
-            result.invoke(WorkerResult(SensorType.AXEL.sensorName, it))
-        }?.let {
+        factory.build(SensorType.AXEL)?.let {
             workers.add(it)
         }
 
-        factory.build(SensorType.GRAVITY) {
-            result.invoke(WorkerResult(SensorType.GRAVITY.sensorName, it))
-        }?.let {
+        factory.build(SensorType.GRAVITY)?.let {
             workers.add(it)
         }
     }
@@ -82,7 +83,8 @@ class SensorLib(
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    workers.forEach { it.actionStopped() }
+                    val workerRawResults = workers.map { WorkerRawResult(it.sensorType, it.actionStopped()) }
+                    workOnResult(workerRawResults)
                 }
             }
             false
@@ -90,8 +92,24 @@ class SensorLib(
         workers.forEach { it.start() }
     }
 
+    private fun workOnResult(workerRawResults: List<WorkerRawResult>) {
+        //most probably results will need to send to BE in application scope, that's why here we use GlobalScope
+        GlobalScope.launch(Dispatchers.IO) {
+            val results = workerRawResults.map {
+                val sensorStatistic = SensorStatisticImpl(it.rawData, it.sensorType.dimension)
+                WorkerResult(
+                    it.sensorType.sensorName,
+                    SensorResult(sensorStatistic.getMedian(), sensorStatistic.getAvg())
+                )
+            }
+            ResultPublisher().publishResults(results)
+        }
+    }
+
     private fun stop() {
-        workers.forEach { it.stop() }
+        workers.forEach {
+            it.stop()
+        }
         view.setOnTouchListener(null)
     }
 
